@@ -20,7 +20,8 @@
     "workspace:cleanup": "tsx src/workspace-cleanup.ts",
     "workspace:cleanup-smoke": "tsx src/workspace-cleanup-smoke.ts",
     "test": "vitest run",
-    "typecheck": "pnpm --filter @agent-control-plane/core build && tsc -p tsconfig.json --noEmit"
+    "typecheck": "pnpm --filter @agent-control-plane/core build && tsc -p tsconfig.json --noEmit",
+    "worker:contract-smoke": "pnpm --filter @agent-control-plane/core build && vitest run test/control-plane-client.test.ts"
   },
   "dependencies": {
     "@agent-control-plane/core": "workspace:*",

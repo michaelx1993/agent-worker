@@ -1,3 +1,4 @@
+import { workerApiOpenApiDocument, workerApiPaths } from "@agent-control-plane/core";
 import { describe, expect, it, vi } from "vitest";
 import { HttpControlPlaneClient, WorkerApiError } from "../src/control-plane-client";
 
@@ -94,6 +95,125 @@ describe("HttpControlPlaneClient", () => {
     await expect(client.progress("run-1", { body: "x" }, { idempotencyKey: "" })).rejects.toThrow(
       "idempotencyKey is required",
     );
+  });
+
+  it("covers every OpenAPI run write endpoint with idempotent client methods", async () => {
+    const requests: Array<{ url: string | URL; init?: RequestInit }> = [];
+    const client = new HttpControlPlaneClient({
+      baseUrl: "https://control-plane.example.com",
+      workerId: "worker-1",
+      workerApiToken: "token-1",
+      fetch: async (url, init) => {
+        requests.push({ url, init });
+        if (String(url).endsWith("/events") || String(url).endsWith("/artifacts")) {
+          return jsonResponse({ ok: true, events: [] });
+        }
+        if (String(url).endsWith("/progress")) {
+          return jsonResponse({ ok: true, progress: { inserted: true } });
+        }
+        return jsonResponse({
+          ok: true,
+          run: {
+            runId: "run-1",
+            taskId: "task-1",
+            status: "running",
+          },
+        });
+      },
+    });
+
+    const writeOperations = [
+      {
+        method: () =>
+          client.heartbeat("run 1", { leaseTtlMs: 60000 }, { idempotencyKey: "idem-heartbeat" }),
+        path: workerApiPaths.heartbeat,
+        body: { leaseTtlMs: 60000 },
+        idempotencyKey: "idem-heartbeat",
+      },
+      {
+        method: () =>
+          client.events(
+            "run 1",
+            { events: [{ eventType: "codex.output", message: "started" }] },
+            { idempotencyKey: "idem-events" },
+          ),
+        path: workerApiPaths.events,
+        body: { events: [{ eventType: "codex.output", message: "started" }] },
+        idempotencyKey: "idem-events",
+      },
+      {
+        method: () =>
+          client.progress(
+            "run 1",
+            { body: "Agent Status: Running" },
+            { idempotencyKey: "idem-progress" },
+          ),
+        path: workerApiPaths.progress,
+        body: { body: "Agent Status: Running" },
+        idempotencyKey: "idem-progress",
+      },
+      {
+        method: () =>
+          client.artifacts(
+            "run 1",
+            { urls: ["https://github.com/michaelx1993/agent-worker/pull/1"] },
+            { idempotencyKey: "idem-artifacts" },
+          ),
+        path: workerApiPaths.artifacts,
+        body: { urls: ["https://github.com/michaelx1993/agent-worker/pull/1"] },
+        idempotencyKey: "idem-artifacts",
+      },
+      {
+        method: () =>
+          client.complete(
+            "run 1",
+            { resultSummary: "done", nextStateSuggestion: "Code Review" },
+            { idempotencyKey: "idem-complete" },
+          ),
+        path: workerApiPaths.complete,
+        body: { resultSummary: "done", nextStateSuggestion: "Code Review" },
+        idempotencyKey: "idem-complete",
+      },
+      {
+        method: () =>
+          client.fail(
+            "run 1",
+            { failureReason: "failed", retryable: false },
+            { idempotencyKey: "idem-fail" },
+          ),
+        path: workerApiPaths.fail,
+        body: { failureReason: "failed", retryable: false },
+        idempotencyKey: "idem-fail",
+      },
+    ];
+
+    const openApiWritePaths = Object.entries(workerApiOpenApiDocument.paths)
+      .filter(([, operation]) =>
+        operation.post.parameters.some(
+          (parameter) =>
+            "$ref" in parameter && parameter.$ref === "#/components/parameters/idempotencyKey",
+        ),
+      )
+      .map(([path]) => path);
+
+    expect(writeOperations.map((operation) => operation.path)).toEqual(openApiWritePaths);
+
+    for (const operation of writeOperations) {
+      await operation.method();
+    }
+
+    expect(requests).toHaveLength(writeOperations.length);
+    writeOperations.forEach((operation, index) => {
+      const request = requests[index];
+      expect(String(request?.url)).toBe(
+        `https://control-plane.example.com${operation.path.replace("{runId}", "run%201")}`,
+      );
+      const headers = new Headers(request?.init?.headers);
+      expect(headers.get("authorization")).toBe("Bearer token-1");
+      expect(headers.get("x-acp-worker-id")).toBe("worker-1");
+      expect(headers.get("idempotency-key")).toBe(operation.idempotencyKey);
+      expect(JSON.parse(String(request?.init?.body))).toEqual(operation.body);
+    });
   });
 
   it("throws structured WorkerApiError for non-2xx responses", async () => {

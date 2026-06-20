@@ -11,6 +11,7 @@
     "format": "prettier --check .",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
+    "worker:contract-smoke": "pnpm --filter @agent-control-plane/worker worker:contract-smoke",
     "worker:workspace-smoke": "pnpm --filter @agent-control-plane/worker worker:workspace-smoke",
     "workspace:cleanup-smoke": "pnpm --filter @agent-control-plane/worker workspace:cleanup-smoke"
   },
