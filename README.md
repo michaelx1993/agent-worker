@@ -31,6 +31,7 @@ pnpm workspace:cleanup-smoke
 pnpm compose:smoke
 ACP_RELEASE_TAG=agent-worker-ci-smoke pnpm release:tag
 pnpm release:image
+AGENT_WORKER_DEPLOY_IMAGE=agent-worker:deploy-smoke pnpm deploy:compose
 AGENT_WORKER_ROLLBACK_IMAGE=agent-worker:previous pnpm rollback:compose
 ```
 
@@ -79,6 +80,18 @@ Override the image tag when publishing from CI or a release shell:
 
 ```bash
 AGENT_WORKER_IMAGE=ghcr.io/michaelx1993/agent-worker:$(git rev-parse --short HEAD) pnpm release:image
+```
+
+Validate a deploy target without changing the running service:
+
+```bash
+AGENT_WORKER_DEPLOY_IMAGE=ghcr.io/michaelx1993/agent-worker:$(git rev-parse --short HEAD) pnpm deploy:compose
+```
+
+Apply the deploy after the dry-run succeeds:
+
+```bash
+AGENT_WORKER_DEPLOY_IMAGE=ghcr.io/michaelx1993/agent-worker:$(git rev-parse --short HEAD) AGENT_WORKER_DEPLOY_APPLY=true pnpm deploy:compose
 ```
 
 Validate a rollback target without changing the running service:
