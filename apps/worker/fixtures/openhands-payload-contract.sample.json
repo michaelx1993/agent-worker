@@ -1,0 +1,92 @@
+{
+  "promptReleaseId": "prompt-release-contract",
+  "conversation": {
+    "id": "conv-contract-1",
+    "sandbox_status": "RUNNING",
+    "execution_status": "finished",
+    "event_log_uri": "/api/v1/app-conversations/conv-contract-1/events",
+    "trace_refs": {
+      "data": [
+        {
+          "provider": "langfuse",
+          "trace_id": "trace-contract-conversation",
+          "generation_id": "generation-contract-conversation",
+          "model_name": "gpt-5.5",
+          "input_tokens": "128",
+          "output_tokens": 64,
+          "cost": 0.0042,
+          "latency_ms": "900",
+          "trace_url": "https://cloud.langfuse.com/project/demo/traces/trace-contract-conversation"
+        }
+      ]
+    },
+    "messages": {
+      "results": [
+        {
+          "event_type": "message",
+          "role": "assistant",
+          "content": [{ "type": "text", "text": "我会先检查代码，再提交最小修复。" }]
+        }
+      ]
+    }
+  },
+  "eventLog": {
+    "data": [
+      {
+        "event_type": "message",
+        "role": "assistant",
+        "content": [{ "type": "text", "text": "已定位问题，准备修改。" }]
+      },
+      {
+        "type": "file_write",
+        "action": "write",
+        "path": "apps/web/app/page.tsx",
+        "diff": "+return <main />"
+      },
+      {
+        "type": "terminal",
+        "command": "pnpm test",
+        "exit_code": 0
+      },
+      {
+        "type": "llm_generation",
+        "model": "gpt-5.5",
+        "traceId": "trace-contract-event-log",
+        "generationId": "generation-contract-event-log",
+        "input": {
+          "messages": [
+            { "role": "system", "content": "使用 token=fixture-secret 初始化。" },
+            { "role": "user", "content": [{ "type": "text", "text": "请修复 bug。" }] }
+          ]
+        },
+        "output": {
+          "choices": [
+            {
+              "message": {
+                "role": "assistant",
+                "content": "已修复，OPENAI_API_KEY=sk-proj_fixture_secret_1234567890。"
+              }
+            }
+          ]
+        },
+        "inputTokens": 42,
+        "outputTokens": 12,
+        "costUsd": "0.000420",
+        "latencyMs": 250,
+        "traceUrl": "https://cloud.langfuse.com/project/demo/traces/trace-contract-event-log"
+      }
+    ]
+  },
+  "expected": {
+    "decisionStatus": "succeeded",
+    "retryable": false,
+    "eventTypes": [
+      "openhands.agent_message",
+      "openhands.file_operation",
+      "openhands.shell",
+      "openhands.llm_generation"
+    ],
+    "traceIds": ["trace-contract-conversation", "trace-contract-event-log"],
+    "redactedAbsent": ["fixture-secret", "sk-proj_fixture_secret_1234567890"]
+  }
+}

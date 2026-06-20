@@ -1,0 +1,35 @@
+{
+  "name": "@agent-control-plane/worker",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "pnpm typecheck && pnpm test",
+    "codex:adapter-smoke": "tsx src/codex-adapter-smoke.ts",
+    "codex:app-server-smoke": "tsx src/codex-app-server-adapter-smoke.ts",
+    "dev": "tsx src/index.ts",
+    "langfuse:smoke": "tsx src/langfuse-smoke.ts",
+    "openhands:adapter-smoke": "tsx src/openhands-adapter-smoke.ts",
+    "openhands:payload-contract": "tsx src/openhands-payload-contract.ts",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "start": "node dist/index.js",
+    "workspace:cleanup": "tsx src/workspace-cleanup.ts",
+    "test": "vitest run",
+    "typecheck": "pnpm --filter @agent-control-plane/core build && tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@agent-control-plane/core": "workspace:*",
+    "@langfuse/otel": "5.5.3",
+    "@langfuse/tracing": "5.5.3",
+    "@opentelemetry/sdk-node": "^0.208.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.15"
+  }
+}
