@@ -50,6 +50,23 @@ describe("runWorkerLoop", () => {
     expect(adapters.createExecutionAdapter).toHaveBeenCalledWith("codex-app-server");
     expect(adapters.dispose).toHaveBeenCalledTimes(1);
   });
+
+  it("stops after the configured loop iteration limit", async () => {
+    config.loadWorkerConfig.mockReturnValue(workerConfig({ loopMaxIterations: 2 }));
+    const fetchMock = vi.fn(async (url: string | URL) =>
+      String(url).includes("/runs/claim")
+        ? jsonResponse({ claimed: [], skipped: [] })
+        : jsonResponse({ ok: true }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const { runWorkerLoop } = await import("../src/index");
+
+    const result = await runWorkerLoop();
+
+    expect(result.iterations).toBe(2);
+    expect(countClaimCalls(fetchMock)).toBe(2);
+    expect(adapters.dispose).toHaveBeenCalledTimes(1);
+  });
 });
 
 function jsonResponse(body: unknown): Response {
@@ -61,7 +78,7 @@ function jsonResponse(body: unknown): Response {
   });
 }
 
-function workerConfig(): WorkerConfig {
+function workerConfig(overrides: Partial<WorkerConfig> = {}): WorkerConfig {
   return {
     runLoop: true,
     intervalMs: 1,
@@ -84,6 +101,7 @@ function workerConfig(): WorkerConfig {
       retryBackoffMs: 300_000,
       format: "generic",
     },
+    ...overrides,
   };
 }
 
