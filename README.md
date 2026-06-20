@@ -13,6 +13,8 @@ This repository contains the production HTTP Worker path only. The worker does n
 - `POST /api/worker/v1/runs/:runId/complete`
 - `POST /api/worker/v1/runs/:runId/fail`
 
+Terminal lifecycle writes are final: once `complete` or `fail` succeeds, the run lease is no longer active for additional Worker writes. The worker must write the final Progress entry before calling `complete` or `fail`.
+
 ## Development
 
 ```bash
