@@ -29,6 +29,7 @@ pnpm codex:app-server-smoke
 pnpm worker:workspace-smoke
 pnpm workspace:cleanup-smoke
 pnpm compose:smoke
+ACP_RELEASE_TAG=agent-worker-ci-smoke pnpm release:tag
 pnpm release:image
 AGENT_WORKER_ROLLBACK_IMAGE=agent-worker:previous pnpm rollback:compose
 ```
@@ -66,6 +67,12 @@ Build the release image with the default local tag:
 
 ```bash
 pnpm release:image
+```
+
+Validate the unified release tag metadata without creating a git tag:
+
+```bash
+ACP_RELEASE_TAG=agent-worker-$(git rev-parse --short HEAD) pnpm release:tag
 ```
 
 Override the image tag when publishing from CI or a release shell:
