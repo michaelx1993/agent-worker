@@ -16,7 +16,7 @@
     "openhands:payload-contract": "tsx src/openhands-payload-contract.ts",
     "lint": "tsc -p tsconfig.json --noEmit",
     "start": "node dist/index.js",
-    "worker:workspace-smoke": "tsx src/worker-workspace-smoke.ts",
+    "worker:workspace-smoke": "pnpm --filter @agent-control-plane/core build && tsx src/worker-workspace-smoke.ts",
     "workspace:cleanup": "tsx src/workspace-cleanup.ts",
     "workspace:cleanup-smoke": "tsx src/workspace-cleanup-smoke.ts",
     "test": "vitest run",

@@ -1,10 +1,14 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { access, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { promisify } from "node:util";
 import { runHttpOnce, type WorkerApiClient } from "./http-runner.js";
 import type { WorkerConfig } from "./config.js";
 import type { WorkerClaimedRunContract } from "@agent-control-plane/core";
 import type { ExecutionAdapter } from "./adapters/types.js";
+
+const execFileAsync = promisify(execFile);
 
 interface SmokeCalls {
   register: number;
@@ -19,32 +23,41 @@ interface SmokeCalls {
 
 async function main() {
   const tempDir = await mkdtemp(join(tmpdir(), "acp-worker-workspace-smoke-"));
-  const client = fakeClient([claimedRun(tempDir)]);
+  const repoPath = join(tempDir, "source");
+  const workspaceRoot = join(tempDir, "workspaces");
+  let observedWorkspacePath: string | undefined;
+  let observedWorkspaceStrategy: string | undefined;
+  const client = fakeClient([claimedRun(repoPath)]);
   const adapter: ExecutionAdapter = {
-    execute: async (input) => ({
-      status: "succeeded",
-      summary: `Workspace smoke completed for ${input.repositorySlug}.`,
-      nextState: "Code Review",
-      events: [
-        {
-          eventType: "workspace.ready",
-          message: "Workspace context was passed into the execution adapter.",
-          payload: {
-            workspacePath: input.workspacePath ?? null,
-            workspaceStrategy: input.workspaceStrategy ?? null,
+    execute: async (input) => {
+      observedWorkspacePath = input.workspacePath;
+      observedWorkspaceStrategy = input.workspaceStrategy;
+      return {
+        status: "succeeded",
+        summary: `Workspace smoke completed for ${input.repositorySlug}.`,
+        nextState: "Code Review",
+        events: [
+          {
+            eventType: "workspace.ready",
+            message: "Workspace context was passed into the execution adapter.",
+            payload: {
+              workspacePath: input.workspacePath ?? null,
+              workspaceStrategy: input.workspaceStrategy ?? null,
+            },
           },
-        },
-        {
-          eventType: "codex.agent_message",
-          message: "Worker workspace smoke executed.",
-        },
-      ],
-    }),
+          {
+            eventType: "codex.agent_message",
+            message: "Worker workspace smoke executed.",
+          },
+        ],
+      };
+    },
   };
 
   try {
+    await initRepository(repoPath);
     const result = await runHttpOnce({
-      config: workerConfig(tempDir),
+      config: workerConfig(workspaceRoot),
       executionAdapter: adapter,
       controlPlaneClient: client,
     });
@@ -59,10 +72,28 @@ async function main() {
       );
     }
 
+    if (observedWorkspaceStrategy !== "git-worktree" || !observedWorkspacePath) {
+      throw new Error(
+        `Worker did not pass git-worktree workspace context: ${JSON.stringify({
+          observedWorkspacePath,
+          observedWorkspaceStrategy,
+        })}`,
+      );
+    }
+
+    await access(join(observedWorkspacePath, ".git"));
+
     console.log("worker_workspace_smoke=passed");
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }
+}
+
+async function initRepository(path: string): Promise<void> {
+  await execFileAsync("git", ["init", "-b", "main", path]);
+  await execFileAsync("git", ["-C", path, "config", "user.email", "agent@example.com"]);
+  await execFileAsync("git", ["-C", path, "config", "user.name", "Agent"]);
+  await execFileAsync("git", ["-C", path, "commit", "--allow-empty", "-m", "init"]);
 }
 
 function fakeClient(claimed: WorkerClaimedRunContract[]): WorkerApiClient & { calls: SmokeCalls } {
