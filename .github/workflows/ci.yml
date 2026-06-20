@@ -57,6 +57,9 @@ jobs:
       - name: Compose smoke
         run: pnpm compose:smoke
 
+      - name: Release tag smoke
+        run: ACP_RELEASE_TAG=agent-worker-ci-smoke pnpm release:tag
+
       - name: Release image smoke
         run: pnpm release:image
 
