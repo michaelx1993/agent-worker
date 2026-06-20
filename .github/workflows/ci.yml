@@ -63,6 +63,9 @@ jobs:
       - name: Release image smoke
         run: pnpm release:image
 
+      - name: Deploy compose dry-run
+        run: AGENT_WORKER_DEPLOY_IMAGE=agent-worker:deploy-smoke pnpm deploy:compose
+
       - name: Rollback compose dry-run
         run: AGENT_WORKER_ROLLBACK_IMAGE=agent-worker:rollback-smoke pnpm rollback:compose
 
