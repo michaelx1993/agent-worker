@@ -22,6 +22,7 @@ pnpm install
 pnpm format
 pnpm typecheck
 pnpm test
+pnpm worker:contract-smoke
 pnpm build
 pnpm codex:adapter-smoke
 pnpm codex:app-server-smoke

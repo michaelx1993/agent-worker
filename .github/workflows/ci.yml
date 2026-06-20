@@ -39,5 +39,8 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Worker contract smoke
+        run: pnpm worker:contract-smoke
+
       - name: Build
         run: pnpm build
