@@ -153,15 +153,29 @@ describe("HttpControlPlaneClient", () => {
         idempotencyKey: "idem-progress",
       },
       {
+        body: {
+          conversation: {
+            provider: "codex-app-server",
+            conversationId: "thread-123/turns/turn-456",
+            eventLogUri: "process://codex-app-server/threads/thread-123/turns/turn-456",
+          },
+          traces: [{ provider: "codex", traceId: "trace-1" }],
+        },
+        idempotencyKey: "idem-artifacts",
         method: () =>
           client.artifacts(
             "run 1",
-            { urls: ["https://github.com/michaelx1993/agent-worker/pull/1"] },
+            {
+              conversation: {
+                provider: "codex-app-server",
+                conversationId: "thread-123/turns/turn-456",
+                eventLogUri: "process://codex-app-server/threads/thread-123/turns/turn-456",
+              },
+              traces: [{ provider: "codex", traceId: "trace-1" }],
+            },
             { idempotencyKey: "idem-artifacts" },
           ),
         path: workerApiPaths.artifacts,
-        body: { urls: ["https://github.com/michaelx1993/agent-worker/pull/1"] },
-        idempotencyKey: "idem-artifacts",
       },
       {
         method: () =>
