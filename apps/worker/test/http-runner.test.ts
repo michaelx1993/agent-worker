@@ -34,6 +34,7 @@ describe("runHttpOnce", () => {
         config: workerConfig(),
         executionAdapter: adapter,
         controlPlaneClient: client,
+        workspacePreparer: fakeWorkspacePreparer(),
       }),
     ).resolves.toMatchObject({
       workerId: "worker-http-test",
@@ -55,6 +56,10 @@ describe("runHttpOnce", () => {
         taskId: "task-1",
         repositoryGitUrl: "git@example.com:repo.git",
         renderedPrompt: "rendered prompt",
+        workspacePath: "/tmp/workspaces/repo/run-1",
+        workspaceStrategy: "git-worktree",
+        workspaceBaseRef: "main",
+        workspaceHeadRef: "agent/run-1",
       }),
     );
     expect(client.complete).toHaveBeenCalledWith(
@@ -105,6 +110,7 @@ describe("runHttpOnce", () => {
         config: workerConfig(),
         executionAdapter: adapter,
         controlPlaneClient: client,
+        workspacePreparer: fakeWorkspacePreparer(),
       }),
     ).resolves.toMatchObject({
       completed: [],
@@ -143,6 +149,7 @@ describe("runHttpOnce", () => {
         config: workerConfig(),
         executionAdapter: adapter,
         controlPlaneClient: client,
+        workspacePreparer: fakeWorkspacePreparer(),
       }),
     ).resolves.toMatchObject({
       completed: [],
@@ -211,6 +218,7 @@ describe("runHttpOnce", () => {
       config: workerConfig(),
       executionAdapter: adapter,
       controlPlaneClient: client,
+      workspacePreparer: fakeWorkspacePreparer(),
     });
 
     const outboundPayloads = JSON.stringify([
@@ -226,6 +234,43 @@ describe("runHttpOnce", () => {
     expect(outboundPayloads).not.toContain("hunter2");
     expect(outboundPayloads).not.toContain("supersecrettoken");
     expect(outboundPayloads).toContain("[REDACTED]");
+  });
+
+  it("reports workspace preparation failures as retryable run failures", async () => {
+    const client = fakeClient([claimedRun()]);
+    const adapter = fakeAdapter({
+      status: "succeeded",
+      summary: "should not run",
+      events: [],
+    });
+
+    await expect(
+      runHttpOnce({
+        config: workerConfig(),
+        executionAdapter: adapter,
+        controlPlaneClient: client,
+        workspacePreparer: {
+          prepare: vi.fn(async () => {
+            throw new Error("repositoryLocalPath is required for git-worktree workspace strategy.");
+          }),
+        },
+      }),
+    ).resolves.toMatchObject({
+      completed: [],
+      failed: [{ runId: "run-1", taskId: "task-1", status: "failed" }],
+    });
+
+    expect(adapter.execute).not.toHaveBeenCalled();
+    expect(client.fail).toHaveBeenCalledWith(
+      "run-1",
+      {
+        failureReason: "repositoryLocalPath is required for git-worktree workspace strategy.",
+        retryable: true,
+      },
+      expect.objectContaining({
+        idempotencyKey: expect.stringContaining("run-1:adapter-error-fail:"),
+      }),
+    );
   });
 });
 
@@ -245,6 +290,17 @@ function fakeClient(claimed: WorkerClaimedRunContract[]): WorkerApiClient {
 function fakeAdapter(result: RunExecutionResult): ExecutionAdapter {
   return {
     execute: vi.fn(async () => result),
+  };
+}
+
+function fakeWorkspacePreparer() {
+  return {
+    prepare: vi.fn(async () => ({
+      strategy: "git-worktree" as const,
+      path: "/tmp/workspaces/repo/run-1",
+      baseRef: "main",
+      headRef: "agent/run-1",
+    })),
   };
 }
 

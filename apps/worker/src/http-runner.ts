@@ -5,6 +5,7 @@ import { HttpControlPlaneClient } from "./control-plane-client.js";
 import type { WorkerConfig } from "./config.js";
 import { summarizeExecutionEventsForProgress } from "./event-progress.js";
 import { redactExecutionEvents, redactSensitivePayload, redactSensitiveText } from "./redaction.js";
+import { LocalWorkerWorkspacePreparer, type WorkerWorkspacePreparer } from "./workspace-manager.js";
 
 export interface WorkerApiClient {
   register(): Promise<unknown>;
@@ -97,8 +98,10 @@ export async function runHttpOnce(input: {
   config: WorkerConfig;
   executionAdapter: ExecutionAdapter;
   controlPlaneClient?: WorkerApiClient;
+  workspacePreparer?: WorkerWorkspacePreparer;
 }): Promise<HttpWorkerRunResult> {
   const { config, executionAdapter } = input;
+  const workspacePreparer = input.workspacePreparer ?? new LocalWorkerWorkspacePreparer();
   const client =
     input.controlPlaneClient ??
     new HttpControlPlaneClient({
@@ -131,6 +134,7 @@ export async function runHttpOnce(input: {
       client,
       config,
       executionAdapter,
+      workspacePreparer,
       claimed,
     });
     if (result === "completed") {
@@ -187,9 +191,10 @@ async function executeHttpClaimedRun(input: {
   client: WorkerApiClient;
   config: WorkerConfig;
   executionAdapter: ExecutionAdapter;
+  workspacePreparer: WorkerWorkspacePreparer;
   claimed: WorkerClaimedRunContract;
 }): Promise<"completed" | "failed"> {
-  const { client, config, executionAdapter, claimed } = input;
+  const { client, config, executionAdapter, workspacePreparer, claimed } = input;
   const { run } = claimed;
 
   await client.heartbeat(
@@ -206,6 +211,25 @@ async function executeHttpClaimedRun(input: {
   );
 
   try {
+    const workspace = await workspacePreparer.prepare({ config, claimed });
+    await client.events(
+      run.runId,
+      {
+        events: [
+          {
+            eventType: "workspace.ready",
+            message: "Worker workspace prepared for run.",
+            payload: {
+              strategy: workspace.strategy,
+              path: workspace.path,
+              baseRef: workspace.baseRef,
+              headRef: workspace.headRef,
+            },
+          },
+        ],
+      },
+      writeOptions(run.runId, "workspace-ready", workspace),
+    );
     const execution = await executionAdapter.execute({
       runId: run.runId,
       taskId: run.taskId,
@@ -213,6 +237,10 @@ async function executeHttpClaimedRun(input: {
       repositoryId: run.repositoryId,
       repositorySlug: run.repositorySlug,
       repositoryGitUrl: run.repositoryGitUrl,
+      workspacePath: workspace.path,
+      workspaceStrategy: workspace.strategy,
+      workspaceBaseRef: workspace.baseRef,
+      workspaceHeadRef: workspace.headRef,
       role: parseAgentRole(run.role),
       leaseOwner: run.leaseOwner,
       promptReleaseId: claimed.promptRelease.id,
