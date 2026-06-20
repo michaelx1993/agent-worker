@@ -28,6 +28,8 @@ pnpm codex:adapter-smoke
 pnpm codex:app-server-smoke
 pnpm worker:workspace-smoke
 pnpm workspace:cleanup-smoke
+pnpm compose:smoke
+pnpm release:image
 ```
 
 ## Run
@@ -51,4 +53,22 @@ Required runtime variables:
 ```bash
 docker build -t agent-worker:local .
 docker run --env-file .env agent-worker:local
+```
+
+Compose smoke validates the production service definition without starting the worker:
+
+```bash
+pnpm compose:smoke
+```
+
+Build the release image with the default local tag:
+
+```bash
+pnpm release:image
+```
+
+Override the image tag when publishing from CI or a release shell:
+
+```bash
+AGENT_WORKER_IMAGE=ghcr.io/michaelx1993/agent-worker:$(git rev-parse --short HEAD) pnpm release:image
 ```

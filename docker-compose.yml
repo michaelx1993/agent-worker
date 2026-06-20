@@ -1,0 +1,23 @@
+services:
+  agent-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ${AGENT_WORKER_IMAGE:-agent-worker:local}
+    restart: unless-stopped
+    environment:
+      CONTROL_PLANE_BASE_URL: ${CONTROL_PLANE_BASE_URL:-http://agent-control-plane:3112}
+      ACP_WORKER_API_TOKEN: ${ACP_WORKER_API_TOKEN:-replace-me}
+      WORKER_ID: ${WORKER_ID:-agent-worker-compose}
+      WORKER_RUN_LOOP: ${WORKER_RUN_LOOP:-true}
+      WORKER_LOOP_INTERVAL_MS: ${WORKER_LOOP_INTERVAL_MS:-60000}
+      WORKER_EXECUTION_ADAPTER: ${WORKER_EXECUTION_ADAPTER:-codex-cli}
+      WORKER_WORKSPACE_ROOT: ${WORKER_WORKSPACE_ROOT:-/workspaces}
+      WORKER_WORKSPACE_STRATEGY: ${WORKER_WORKSPACE_STRATEGY:-git-worktree}
+      WORKER_CODEX_COMMAND: ${WORKER_CODEX_COMMAND:-codex}
+      WORKER_CODEX_TIMEOUT_MS: ${WORKER_CODEX_TIMEOUT_MS:-3600000}
+    volumes:
+      - agent-worker-workspaces:${WORKER_WORKSPACE_ROOT:-/workspaces}
+
+volumes:
+  agent-worker-workspaces:

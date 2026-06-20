@@ -54,5 +54,11 @@ jobs:
       - name: Workspace cleanup smoke
         run: pnpm workspace:cleanup-smoke
 
+      - name: Compose smoke
+        run: pnpm compose:smoke
+
+      - name: Release image smoke
+        run: pnpm release:image
+
       - name: Build
         run: pnpm build
