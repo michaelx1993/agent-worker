@@ -274,17 +274,6 @@ async function executeHttpClaimedRun(input: {
 
     if (execution.status === "succeeded") {
       const summary = redactSensitiveText(execution.summary);
-      await client.complete(
-        run.runId,
-        {
-          resultSummary: summary,
-          ...(execution.nextState ? { nextStateSuggestion: execution.nextState } : {}),
-        },
-        writeOptions(run.runId, "complete", {
-          summary,
-          nextState: execution.nextState,
-        }),
-      );
       await client.progress(
         run.runId,
         {
@@ -297,10 +286,26 @@ async function executeHttpClaimedRun(input: {
           nextState: execution.nextState,
         }),
       );
+      await client.complete(
+        run.runId,
+        {
+          resultSummary: summary,
+          ...(execution.nextState ? { nextStateSuggestion: execution.nextState } : {}),
+        },
+        writeOptions(run.runId, "complete", {
+          summary,
+          nextState: execution.nextState,
+        }),
+      );
       return "completed";
     }
 
     const failureReason = redactSensitiveText(execution.reason);
+    await client.progress(
+      run.runId,
+      { body: `Agent Status: Failed. ${failureReason}` },
+      writeOptions(run.runId, "progress-failed", { reason: failureReason }),
+    );
     await client.fail(
       run.runId,
       {
@@ -311,11 +316,6 @@ async function executeHttpClaimedRun(input: {
         reason: failureReason,
         retryable: execution.retryable,
       }),
-    );
-    await client.progress(
-      run.runId,
-      { body: `Agent Status: Failed. ${failureReason}` },
-      writeOptions(run.runId, "progress-failed", { reason: failureReason }),
     );
     return "failed";
   } catch (error) {

@@ -89,6 +89,10 @@ describe("runHttpOnce", () => {
       }),
       expect.any(Object),
     );
+    const progressCalls = vi.mocked(client.progress).mock.invocationCallOrder;
+    expect(progressCalls[progressCalls.length - 1]).toBeLessThan(
+      vi.mocked(client.complete).mock.invocationCallOrder[0] ?? 0,
+    );
   });
 
   it("reports failed execution through Worker API fail and progress calls", async () => {
@@ -133,6 +137,10 @@ describe("runHttpOnce", () => {
       expect.objectContaining({
         idempotencyKey: expect.stringContaining("run-1:progress-failed:"),
       }),
+    );
+    const progressCalls = vi.mocked(client.progress).mock.invocationCallOrder;
+    expect(progressCalls[progressCalls.length - 1]).toBeLessThan(
+      vi.mocked(client.fail).mock.invocationCallOrder[0] ?? 0,
     );
   });
 
