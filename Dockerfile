@@ -16,6 +16,6 @@ COPY apps apps
 COPY packages packages
 COPY .prettierrc .prettierrc
 
-RUN pnpm --filter @agent-control-plane/worker build
+RUN pnpm --filter @agent-control-plane/core build && pnpm --filter @agent-control-plane/worker build
 
 CMD ["node", "apps/worker/dist/index.js"]

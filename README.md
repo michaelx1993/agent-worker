@@ -30,6 +30,7 @@ pnpm worker:workspace-smoke
 pnpm workspace:cleanup-smoke
 pnpm compose:smoke
 pnpm release:image
+AGENT_WORKER_ROLLBACK_IMAGE=agent-worker:previous pnpm rollback:compose
 ```
 
 ## Run
@@ -71,4 +72,16 @@ Override the image tag when publishing from CI or a release shell:
 
 ```bash
 AGENT_WORKER_IMAGE=ghcr.io/michaelx1993/agent-worker:$(git rev-parse --short HEAD) pnpm release:image
+```
+
+Validate a rollback target without changing the running service:
+
+```bash
+AGENT_WORKER_ROLLBACK_IMAGE=ghcr.io/michaelx1993/agent-worker:previous pnpm rollback:compose
+```
+
+Apply the rollback after the dry-run succeeds:
+
+```bash
+AGENT_WORKER_ROLLBACK_IMAGE=ghcr.io/michaelx1993/agent-worker:previous AGENT_WORKER_ROLLBACK_APPLY=true pnpm rollback:compose
 ```

@@ -11,6 +11,7 @@
     "compose:smoke": "bash scripts/compose-smoke.sh",
     "format": "prettier --check .",
     "release:image": "bash scripts/release-image.sh",
+    "rollback:compose": "bash scripts/rollback-compose.sh",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "worker:contract-smoke": "pnpm --filter @agent-control-plane/worker worker:contract-smoke",
