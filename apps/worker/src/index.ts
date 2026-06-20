@@ -42,6 +42,10 @@ export async function runWorkerLoop(options: { signal?: AbortSignal } = {}) {
       results.push(result);
       console.log(JSON.stringify(result, null, 2));
 
+      if (config.loopMaxIterations && results.length >= config.loopMaxIterations) {
+        break;
+      }
+
       if (options.signal?.aborted) {
         break;
       }

@@ -1,5 +1,6 @@
 export interface WorkerConfig {
   runLoop: boolean;
+  loopMaxIterations?: number;
   intervalMs: number;
   leaseTtlMs: number;
   leaseRenewalIntervalMs: number;
@@ -75,6 +76,7 @@ export function loadWorkerConfig(env: NodeJS.ProcessEnv = process.env): WorkerCo
 
   return {
     runLoop: env.WORKER_RUN_LOOP === "true",
+    ...optionalPositiveInt("loopMaxIterations", env.WORKER_LOOP_MAX_ITERATIONS),
     intervalMs: parsePositiveInt(env.WORKER_LOOP_INTERVAL_MS, 60_000),
     leaseTtlMs,
     leaseRenewalIntervalMs: parsePositiveInt(
