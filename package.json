@@ -6,9 +6,13 @@
   "scripts": {
     "build": "pnpm -r build",
     "check": "pnpm -r check",
+    "codex:adapter-smoke": "pnpm --filter @agent-control-plane/worker codex:adapter-smoke",
+    "codex:app-server-smoke": "pnpm --filter @agent-control-plane/worker codex:app-server-smoke",
     "format": "prettier --check .",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "worker:workspace-smoke": "pnpm --filter @agent-control-plane/worker worker:workspace-smoke",
+    "workspace:cleanup-smoke": "pnpm --filter @agent-control-plane/worker workspace:cleanup-smoke"
   },
   "devDependencies": {
     "@types/node": "^26.0.0",

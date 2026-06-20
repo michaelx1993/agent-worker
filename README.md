@@ -21,6 +21,10 @@ pnpm format
 pnpm typecheck
 pnpm test
 pnpm build
+pnpm codex:adapter-smoke
+pnpm codex:app-server-smoke
+pnpm worker:workspace-smoke
+pnpm workspace:cleanup-smoke
 ```
 
 ## Run
