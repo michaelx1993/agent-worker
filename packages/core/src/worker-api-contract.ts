@@ -145,6 +145,14 @@ export interface WorkerRunArtifactsRequest {
   files?: string[];
   urls?: string[];
   metadata?: Record<string, unknown>;
+  conversation?: {
+    provider: string;
+    conversationId: string;
+    eventLogUri?: string;
+    eventCursor?: string;
+    uiUrl?: string;
+  };
+  traces?: Array<Record<string, unknown>>;
 }
 
 export interface WorkerRunCompleteRequest {
@@ -289,6 +297,14 @@ export const workerApiOpenApiDocument = {
           files: { type: "array", items: { type: "string" } },
           urls: { type: "array", items: { type: "string" } },
           metadata: { type: "object", additionalProperties: true },
+          conversation: objectSchema({
+            provider: { type: "string", minLength: 1 },
+            conversationId: { type: "string", minLength: 1 },
+            eventLogUri: { type: "string" },
+            eventCursor: { type: "string" },
+            uiUrl: { type: "string" },
+          }),
+          traces: { type: "array", items: { type: "object", additionalProperties: true } },
         },
         [],
       ),
