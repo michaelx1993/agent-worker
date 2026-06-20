@@ -42,5 +42,17 @@ jobs:
       - name: Worker contract smoke
         run: pnpm worker:contract-smoke
 
+      - name: Codex adapter smoke
+        run: pnpm codex:adapter-smoke
+
+      - name: Codex app-server smoke
+        run: pnpm codex:app-server-smoke
+
+      - name: Worker workspace smoke
+        run: pnpm worker:workspace-smoke
+
+      - name: Workspace cleanup smoke
+        run: pnpm workspace:cleanup-smoke
+
       - name: Build
         run: pnpm build
