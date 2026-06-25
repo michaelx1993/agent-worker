@@ -4,6 +4,7 @@ import type { ExecutionAdapter, RunExecutionEvent } from "./adapters/types.js";
 import { HttpControlPlaneClient } from "./control-plane-client.js";
 import type { WorkerConfig } from "./config.js";
 import { summarizeExecutionEventsForProgress } from "./event-progress.js";
+import { writeProjectMetaGitForRun } from "./project-meta-git.js";
 import { redactExecutionEvents, redactSensitivePayload, redactSensitiveText } from "./redaction.js";
 import { resolveClaimedRunRuntime } from "./runtime-snapshot.js";
 import { LocalWorkerWorkspacePreparer, type WorkerWorkspacePreparer } from "./workspace-manager.js";
@@ -267,16 +268,27 @@ async function executeHttpClaimedRun(input: {
       }
     }
 
-    if (execution.conversation || execution.traces?.length) {
+    if (execution.status === "succeeded") {
+      const summary = redactSensitiveText(execution.summary);
+      const projectMetaGit = await writeProjectMetaGitForRun({
+        config,
+        claimed,
+        workspace,
+        execution,
+        summary,
+      });
       const artifacts = redactSensitivePayload({
         conversation: execution.conversation,
         traces: execution.traces ?? [],
+        projectMetaGit,
       });
-      await client.artifacts(run.runId, artifacts, writeOptions(run.runId, "artifacts", artifacts));
-    }
-
-    if (execution.status === "succeeded") {
-      const summary = redactSensitiveText(execution.summary);
+      if (hasArtifactPayload(artifacts)) {
+        await client.artifacts(
+          run.runId,
+          artifacts,
+          writeOptions(run.runId, "artifacts", artifacts),
+        );
+      }
       await client.progress(
         run.runId,
         {
@@ -304,6 +316,13 @@ async function executeHttpClaimedRun(input: {
     }
 
     const failureReason = redactSensitiveText(execution.reason);
+    const artifacts = redactSensitivePayload({
+      conversation: execution.conversation,
+      traces: execution.traces ?? [],
+    });
+    if (hasArtifactPayload(artifacts)) {
+      await client.artifacts(run.runId, artifacts, writeOptions(run.runId, "artifacts", artifacts));
+    }
     await client.progress(
       run.runId,
       { body: `Agent Status: Failed. ${failureReason}` },
@@ -385,6 +404,16 @@ function parseAgentRole(role: string): AgentRole {
   }
 
   throw new Error(`Unsupported agent role from Worker API claim: ${role}`);
+}
+
+function hasArtifactPayload(payload: Record<string, unknown>): boolean {
+  return Object.values(payload).some((value) => {
+    if (Array.isArray(value)) {
+      return value.length > 0;
+    }
+
+    return value !== undefined && value !== null;
+  });
 }
 
 function sha256(value: string): string {

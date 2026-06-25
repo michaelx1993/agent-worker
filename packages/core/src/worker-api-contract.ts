@@ -152,6 +152,15 @@ export interface WorkerRunArtifactsRequest {
   files?: string[];
   urls?: string[];
   metadata?: Record<string, unknown>;
+  projectMetaGit?: {
+    planeProjectWorkspaceId: string;
+    localPath: string;
+    remoteUrl?: string;
+    commitSha?: string;
+    filesChanged: string[];
+    operation?: string;
+    summary?: string;
+  };
   conversation?: {
     provider: string;
     conversationId: string;
@@ -309,6 +318,18 @@ export const workerApiOpenApiDocument = {
           files: { type: "array", items: { type: "string" } },
           urls: { type: "array", items: { type: "string" } },
           metadata: { type: "object", additionalProperties: true },
+          projectMetaGit: objectSchema(
+            {
+              planeProjectWorkspaceId: { type: "string", minLength: 1 },
+              localPath: { type: "string", minLength: 1 },
+              remoteUrl: { type: "string" },
+              commitSha: { type: "string" },
+              filesChanged: { type: "array", minItems: 1, items: { type: "string" } },
+              operation: { type: "string" },
+              summary: { type: "string" },
+            },
+            ["planeProjectWorkspaceId", "localPath", "filesChanged"],
+          ),
           conversation: objectSchema({
             provider: { type: "string", minLength: 1 },
             conversationId: { type: "string", minLength: 1 },

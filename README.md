@@ -17,6 +17,8 @@ Terminal lifecycle writes are final: once `complete` or `fail` succeeds, the run
 
 Worker claim responses may include `planeRuntimeSnapshot`. When present, the worker treats that snapshot as the frozen runtime context and prefers its repository, prompt, previous conversation and workspace metadata over legacy compatibility fields on `run` / `promptRelease`. The legacy fields remain supported so older Control Plane versions can still run.
 
+When the snapshot includes a Plane Project Workspace id, successful runs also write Project Meta Git under `WORKER_WORKSPACE_ROOT/_project-meta/<project>`. The worker rewrites `status.md`, appends `progress.md`, writes `runs/<run_id>.md` and appends `artifacts/index.md`, commits those files locally, then reports the commit evidence through `/artifacts` as `projectMetaGit`.
+
 ## Development
 
 ```bash
