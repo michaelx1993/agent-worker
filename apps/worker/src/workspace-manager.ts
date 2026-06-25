@@ -4,6 +4,7 @@ import { join, resolve, sep } from "node:path";
 import { promisify } from "node:util";
 import type { WorkerClaimedRunContract } from "@agent-control-plane/core";
 import type { WorkerConfig, WorkerWorkspaceStrategy } from "./config.js";
+import { resolveClaimedRunRuntime } from "./runtime-snapshot.js";
 
 export interface PreparedWorkerWorkspace {
   strategy: "local-path" | "git-worktree" | "ephemeral";
@@ -36,12 +37,13 @@ export async function prepareWorkerWorkspace(input: {
 }): Promise<PreparedWorkerWorkspace> {
   const { config, claimed } = input;
   const { run } = claimed;
-  const strategy = resolveWorkspaceStrategy(config.workspaceStrategy, run.repositoryLocalPath);
-  const baseRef = run.repositoryDefaultBranch;
+  const runtime = resolveClaimedRunRuntime(claimed);
+  const strategy = resolveWorkspaceStrategy(config.workspaceStrategy, runtime.repositoryLocalPath);
+  const baseRef = runtime.repositoryDefaultBranch;
   const headRef = `agent/${safePathSegment(run.runId).slice(0, 8)}`;
 
   if (strategy === "local-path") {
-    const path = requireRepositoryLocalPath(run.repositoryLocalPath, strategy);
+    const path = requireRepositoryLocalPath(runtime.repositoryLocalPath, strategy);
     return {
       strategy,
       path,
@@ -50,10 +52,10 @@ export async function prepareWorkerWorkspace(input: {
     };
   }
 
-  const path = workspacePath(config.workspaceRoot, run.repositorySlug, run.runId);
+  const path = workspacePath(config.workspaceRoot, runtime.repositorySlug, run.runId);
 
   if (strategy === "git-worktree") {
-    const repositoryLocalPath = requireRepositoryLocalPath(run.repositoryLocalPath, strategy);
+    const repositoryLocalPath = requireRepositoryLocalPath(runtime.repositoryLocalPath, strategy);
     await mkdir(parentDirectory(path), { recursive: true });
     await ensureGitWorktree({
       repositoryLocalPath,

@@ -144,6 +144,45 @@ describe("runHttpOnce", () => {
     );
   });
 
+  it("uses Plane runtime snapshot prompt, repository and previous conversation when present", async () => {
+    const client = fakeClient([claimedRunWithRuntimeSnapshot()]);
+    const adapter = fakeAdapter({
+      status: "succeeded",
+      summary: "implemented from snapshot",
+      nextState: "Code Review",
+      events: [],
+    });
+
+    const result = await runHttpOnce({
+      config: workerConfig(),
+      executionAdapter: adapter,
+      controlPlaneClient: client,
+      workspacePreparer: fakeWorkspacePreparer(),
+    });
+
+    expect(result.claimed[0]).toMatchObject({
+      repositoryId: "repo-snapshot",
+      repositorySlug: "repo-snapshot",
+      repositoryGitUrl: "git@example.com:repo-snapshot.git",
+      repositoryDefaultBranch: "develop",
+      repositoryLocalPath: "/repos/repo-snapshot",
+    });
+    expect(adapter.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        repositoryId: "repo-snapshot",
+        repositorySlug: "repo-snapshot",
+        repositoryGitUrl: "git@example.com:repo-snapshot.git",
+        promptReleaseId: "prompt-release-snapshot",
+        renderedPrompt: "snapshot assembled prompt",
+        previousConversation: {
+          provider: "codex-app-server",
+          conversationId: "thread-1/turn-2",
+          uiUrl: "https://control-plane.example/runs/run-1",
+        },
+      }),
+    );
+  });
+
   it("turns adapter exceptions into retryable Worker API failures", async () => {
     const client = fakeClient([claimedRun()]);
     const adapter = {
@@ -332,6 +371,37 @@ function claimedRun(): WorkerClaimedRunContract {
       id: "prompt-release-1",
       contentHash: "hash",
       renderedContent: "rendered prompt",
+    },
+  };
+}
+
+function claimedRunWithRuntimeSnapshot(): WorkerClaimedRunContract {
+  return {
+    ...claimedRun(),
+    planeRuntimeSnapshot: {
+      id: "snapshot-1",
+      snapshotHash: "snapshot-hash",
+      payload: {
+        schemaVersion: "plane-runtime-snapshot.v1",
+        repository: {
+          id: "repo-snapshot",
+          slug: "repo-snapshot",
+          gitUrl: "git@example.com:repo-snapshot.git",
+          defaultBranch: "develop",
+          localPath: "/repos/repo-snapshot",
+        },
+        legacyPromptRelease: {
+          id: "prompt-release-snapshot",
+          contentHash: "snapshot-hash",
+          renderedContent: "legacy snapshot prompt",
+        },
+        assembledPrompt: "snapshot assembled prompt",
+        previousConversation: {
+          provider: "codex-app-server",
+          conversationId: "thread-1/turn-2",
+          uiUrl: "https://control-plane.example/runs/run-1",
+        },
+      },
     },
   };
 }

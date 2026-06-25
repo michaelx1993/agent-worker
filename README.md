@@ -15,6 +15,8 @@ This repository contains the production HTTP Worker path only. The worker does n
 
 Terminal lifecycle writes are final: once `complete` or `fail` succeeds, the run lease is no longer active for additional Worker writes. The worker must write the final Progress entry before calling `complete` or `fail`.
 
+Worker claim responses may include `planeRuntimeSnapshot`. When present, the worker treats that snapshot as the frozen runtime context and prefers its repository, prompt, previous conversation and workspace metadata over legacy compatibility fields on `run` / `promptRelease`. The legacy fields remain supported so older Control Plane versions can still run.
+
 ## Development
 
 ```bash
