@@ -53,6 +53,12 @@ export interface WorkerPreviousConversationContract {
   uiUrl?: string;
 }
 
+export interface WorkerPlaneRuntimeSnapshotContract {
+  id: string;
+  snapshotHash: string;
+  payload: unknown;
+}
+
 export interface WorkerClaimedRunContract {
   run: {
     runId: string;
@@ -70,6 +76,7 @@ export interface WorkerClaimedRunContract {
     attempt: number;
   };
   promptRelease: WorkerPromptReleaseContract;
+  planeRuntimeSnapshot?: WorkerPlaneRuntimeSnapshotContract;
   previousConversation?: WorkerPreviousConversationContract;
 }
 
@@ -241,6 +248,11 @@ export const workerApiOpenApiDocument = {
               id: { type: "string" },
               contentHash: { type: "string" },
               renderedContent: { type: "string" },
+            }),
+            planeRuntimeSnapshot: objectSchema({
+              id: { type: "string" },
+              snapshotHash: { type: "string" },
+              payload: { type: "object", additionalProperties: true },
             }),
             previousConversation: { type: "object", additionalProperties: true },
           }),

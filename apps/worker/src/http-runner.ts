@@ -5,6 +5,7 @@ import { HttpControlPlaneClient } from "./control-plane-client.js";
 import type { WorkerConfig } from "./config.js";
 import { summarizeExecutionEventsForProgress } from "./event-progress.js";
 import { redactExecutionEvents, redactSensitivePayload, redactSensitiveText } from "./redaction.js";
+import { resolveClaimedRunRuntime } from "./runtime-snapshot.js";
 import { LocalWorkerWorkspacePreparer, type WorkerWorkspacePreparer } from "./workspace-manager.js";
 
 export interface WorkerApiClient {
@@ -170,15 +171,16 @@ export async function runHttpOnce(input: {
 
 function toClaimedRunSummary(claimed: WorkerClaimedRunContract): HttpClaimedRunSummary {
   const { run } = claimed;
+  const runtime = resolveClaimedRunRuntime(claimed);
   return {
     runId: run.runId,
     taskId: run.taskId,
     identifier: run.identifier,
-    repositoryId: run.repositoryId,
-    repositorySlug: run.repositorySlug,
-    repositoryGitUrl: run.repositoryGitUrl,
-    repositoryDefaultBranch: run.repositoryDefaultBranch,
-    ...(run.repositoryLocalPath ? { repositoryLocalPath: run.repositoryLocalPath } : {}),
+    repositoryId: runtime.repositoryId,
+    repositorySlug: runtime.repositorySlug,
+    repositoryGitUrl: runtime.repositoryGitUrl,
+    repositoryDefaultBranch: runtime.repositoryDefaultBranch,
+    ...(runtime.repositoryLocalPath ? { repositoryLocalPath: runtime.repositoryLocalPath } : {}),
     role: parseAgentRole(run.role),
     status: "claimed",
     leaseOwner: run.leaseOwner,
@@ -196,6 +198,7 @@ async function executeHttpClaimedRun(input: {
 }): Promise<"completed" | "failed"> {
   const { client, config, executionAdapter, workspacePreparer, claimed } = input;
   const { run } = claimed;
+  const runtime = resolveClaimedRunRuntime(claimed);
 
   await client.heartbeat(
     run.runId,
@@ -234,19 +237,19 @@ async function executeHttpClaimedRun(input: {
       runId: run.runId,
       taskId: run.taskId,
       identifier: run.identifier,
-      repositoryId: run.repositoryId,
-      repositorySlug: run.repositorySlug,
-      repositoryGitUrl: run.repositoryGitUrl,
+      repositoryId: runtime.repositoryId,
+      repositorySlug: runtime.repositorySlug,
+      repositoryGitUrl: runtime.repositoryGitUrl,
       workspacePath: workspace.path,
       workspaceStrategy: workspace.strategy,
       workspaceBaseRef: workspace.baseRef,
       workspaceHeadRef: workspace.headRef,
       role: parseAgentRole(run.role),
       leaseOwner: run.leaseOwner,
-      promptReleaseId: claimed.promptRelease.id,
-      renderedPrompt: claimed.promptRelease.renderedContent,
-      ...(claimed.previousConversation
-        ? { previousConversation: claimed.previousConversation }
+      promptReleaseId: runtime.promptReleaseId,
+      renderedPrompt: runtime.renderedPrompt,
+      ...(runtime.previousConversation
+        ? { previousConversation: runtime.previousConversation }
         : {}),
     });
 

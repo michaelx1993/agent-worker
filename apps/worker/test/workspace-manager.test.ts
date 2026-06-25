@@ -58,6 +58,30 @@ describe("prepareWorkerWorkspace", () => {
     });
   });
 
+  it("uses repository workspace data from Plane runtime snapshot when present", async () => {
+    const root = await mkdtemp(join(tmpdir(), "acp-worker-snapshot-workspace-"));
+    const repoPath = join(root, "snapshot-source");
+    const workspaceRoot = join(root, "workspaces");
+
+    try {
+      await initRepository(repoPath, "develop");
+      const workspace = await prepareWorkerWorkspace({
+        config: workerConfig(workspaceRoot, "git-worktree"),
+        claimed: claimedRunWithRuntimeSnapshot(repoPath),
+      });
+
+      expect(workspace).toMatchObject({
+        strategy: "git-worktree",
+        baseRef: "develop",
+        headRef: "agent/run-1",
+      });
+      expect(workspace.path).toContain(join("snapshot-repo", "run-1"));
+      await expect(access(join(workspace.path, ".git"))).resolves.toBeUndefined();
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("falls back to an ephemeral workspace when auto has no local repository path", async () => {
     const root = await mkdtemp(join(tmpdir(), "acp-worker-ephemeral-"));
 
@@ -75,8 +99,8 @@ describe("prepareWorkerWorkspace", () => {
   });
 });
 
-async function initRepository(path: string): Promise<void> {
-  await execFileAsync("git", ["init", "-b", "main", path]);
+async function initRepository(path: string, branch = "main"): Promise<void> {
+  await execFileAsync("git", ["init", "-b", branch, path]);
   await execFileAsync("git", ["-C", path, "config", "user.email", "agent@example.com"]);
   await execFileAsync("git", ["-C", path, "config", "user.name", "Agent"]);
   await execFileAsync("git", ["-C", path, "commit", "--allow-empty", "-m", "init"]);
@@ -103,6 +127,27 @@ function claimedRun(repositoryLocalPath: string | undefined): WorkerClaimedRunCo
       id: "prompt-1",
       contentHash: "hash",
       renderedContent: "prompt",
+    },
+  };
+}
+
+function claimedRunWithRuntimeSnapshot(repositoryLocalPath: string): WorkerClaimedRunContract {
+  return {
+    ...claimedRun(undefined),
+    planeRuntimeSnapshot: {
+      id: "snapshot-1",
+      snapshotHash: "snapshot-hash",
+      payload: {
+        schemaVersion: "plane-runtime-snapshot.v1",
+        repository: {
+          id: "repo-snapshot",
+          slug: "snapshot-repo",
+          gitUrl: "git@example.com:snapshot-repo.git",
+          defaultBranch: "develop",
+          localPath: repositoryLocalPath,
+        },
+        assembledPrompt: "snapshot prompt",
+      },
     },
   };
 }
