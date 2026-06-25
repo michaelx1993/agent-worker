@@ -4,6 +4,12 @@ import type {
 } from "@agent-control-plane/core";
 
 export interface ResolvedClaimedRunRuntime {
+  project?: {
+    id?: string;
+    slug?: string;
+    name?: string;
+    planeProjectWorkspaceId?: string;
+  };
   repositoryId: string;
   repositorySlug: string;
   repositoryGitUrl: string;
@@ -20,6 +26,7 @@ export function resolveClaimedRunRuntime(
   claimed: WorkerClaimedRunContract,
 ): ResolvedClaimedRunRuntime {
   const snapshot = planeRuntimeSnapshotPayload(claimed);
+  const project = objectValue(snapshot?.project);
   const repository = objectValue(snapshot?.repository);
   const legacyPromptRelease = objectValue(snapshot?.legacyPromptRelease);
   const repositoryLocalPath = stringValue(repository?.localPath) ?? claimed.run.repositoryLocalPath;
@@ -28,6 +35,16 @@ export function resolveClaimedRunRuntime(
     previousConversationValue(snapshot?.previousConversation) ?? claimed.previousConversation;
 
   return {
+    ...(project
+      ? {
+          project: {
+            ...optionalStringField("id", project.id),
+            ...optionalStringField("slug", project.slug),
+            ...optionalStringField("name", project.name),
+            ...optionalStringField("planeProjectWorkspaceId", project.planeProjectWorkspaceId),
+          },
+        }
+      : {}),
     repositoryId: stringValue(repository?.id) ?? claimed.run.repositoryId,
     repositorySlug: stringValue(repository?.slug) ?? claimed.run.repositorySlug,
     repositoryGitUrl:
@@ -63,6 +80,11 @@ function objectValue(value: unknown): JsonRecord | undefined {
 
 function stringValue(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function optionalStringField<K extends string>(key: K, value: unknown): Partial<Record<K, string>> {
+  const text = stringValue(value);
+  return text ? ({ [key]: text } as Record<K, string>) : {};
 }
 
 function previousConversationValue(value: unknown): WorkerPreviousConversationContract | undefined {

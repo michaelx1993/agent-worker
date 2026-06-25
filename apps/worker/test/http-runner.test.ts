@@ -1,3 +1,6 @@
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import type { WorkerClaimedRunContract } from "@agent-control-plane/core";
 import type { ExecutionAdapter, RunExecutionResult } from "../src/adapters/types";
@@ -181,6 +184,45 @@ describe("runHttpOnce", () => {
         },
       }),
     );
+  });
+
+  it("writes project meta git evidence and reports it as artifacts", async () => {
+    const root = await mkdtemp(join(tmpdir(), "agent-worker-meta-"));
+    try {
+      const client = fakeClient([claimedRunWithProjectMetaSnapshot()]);
+      const adapter = fakeAdapter({
+        status: "succeeded",
+        summary: "implemented with project memory",
+        nextState: "Code Review",
+        events: [],
+      });
+
+      await runHttpOnce({
+        config: workerConfig(root),
+        executionAdapter: adapter,
+        controlPlaneClient: client,
+        workspacePreparer: fakeWorkspacePreparer(),
+      });
+
+      expect(client.artifacts).toHaveBeenCalledWith(
+        "run-1",
+        expect.objectContaining({
+          projectMetaGit: expect.objectContaining({
+            planeProjectWorkspaceId: "plane-project-workspace-1",
+            localPath: expect.stringContaining("_project-meta/project-token"),
+            commitSha: expect.any(String),
+            filesChanged: ["status.md", "progress.md", "runs/run-1.md", "artifacts/index.md"],
+            operation: "run_summary",
+            summary: "implemented with project memory",
+          }),
+        }),
+        expect.objectContaining({
+          idempotencyKey: expect.stringContaining("run-1:artifacts:"),
+        }),
+      );
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 
   it("turns adapter exceptions into retryable Worker API failures", async () => {
@@ -406,7 +448,39 @@ function claimedRunWithRuntimeSnapshot(): WorkerClaimedRunContract {
   };
 }
 
-function workerConfig(): WorkerConfig {
+function claimedRunWithProjectMetaSnapshot(): WorkerClaimedRunContract {
+  return {
+    ...claimedRunWithRuntimeSnapshot(),
+    planeRuntimeSnapshot: {
+      id: "snapshot-1",
+      snapshotHash: "snapshot-hash",
+      payload: {
+        schemaVersion: "plane-runtime-snapshot.v1",
+        project: {
+          id: "project-1",
+          slug: "project-token",
+          name: "Token Project",
+          planeProjectWorkspaceId: "plane-project-workspace-1",
+        },
+        repository: {
+          id: "repo-snapshot",
+          slug: "repo-snapshot",
+          gitUrl: "git@example.com:repo-snapshot.git",
+          defaultBranch: "develop",
+          localPath: "/repos/repo-snapshot",
+        },
+        legacyPromptRelease: {
+          id: "prompt-release-snapshot",
+          contentHash: "snapshot-hash",
+          renderedContent: "legacy snapshot prompt",
+        },
+        assembledPrompt: "snapshot assembled prompt",
+      },
+    },
+  };
+}
+
+function workerConfig(workspaceRoot = "/tmp/workspaces"): WorkerConfig {
   return {
     runLoop: false,
     intervalMs: 60_000,
@@ -418,7 +492,7 @@ function workerConfig(): WorkerConfig {
     controlPlaneBaseUrl: "https://control-plane.example.com",
     workerApiToken: "worker-token",
     executionAdapter: "mock-openhands",
-    workspaceRoot: "/tmp/workspaces",
+    workspaceRoot,
     workspaceStrategy: "git-worktree",
     langfuse: {
       enabled: false,
