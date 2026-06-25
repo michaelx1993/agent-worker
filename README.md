@@ -84,7 +84,7 @@ Override the image tag when publishing from CI or a release shell:
 AGENT_WORKER_IMAGE=ghcr.io/michaelx1993/agent-worker:$(git rev-parse --short HEAD) pnpm release:image
 ```
 
-Release tags publish immutable GHCR images from GitHub hosted Actions:
+Release tags publish immutable multi-arch GHCR images from GitHub hosted Actions:
 
 ```bash
 git tag agent-worker-v0.0.1
