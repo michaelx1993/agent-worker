@@ -52,6 +52,52 @@ describe("writeProjectMetaGitForRun", () => {
       await rm(root, { recursive: true, force: true });
     }
   });
+
+  it("falls back to ACP project identity when Plane project workspace projection is absent", async () => {
+    const root = await mkdtemp(join(tmpdir(), "agent-worker-meta-"));
+    try {
+      const claimed = claimedRun();
+      claimed.planeRuntimeSnapshot = {
+        id: "snapshot-1",
+        snapshotHash: "snapshot-hash",
+        payload: {
+          schemaVersion: "plane-runtime-snapshot.v1",
+          project: {
+            id: "project-local-1",
+            slug: "token",
+            name: "Token Project",
+          },
+        },
+      };
+
+      const artifact = await writeProjectMetaGitForRun({
+        config: workerConfig(root),
+        claimed,
+        workspace: {
+          strategy: "git-worktree",
+          path: "/tmp/workspaces/repo/run-1",
+          baseRef: "main",
+          headRef: "agent/run-1",
+        },
+        execution: {
+          status: "succeeded",
+          summary: "implemented feature without projection",
+          nextState: "Code Review",
+          events: [],
+        },
+        summary: "implemented feature without projection",
+      });
+
+      expect(artifact).toMatchObject({
+        planeProjectWorkspaceId: "project-local-1",
+        commitSha: expect.any(String),
+        filesChanged: ["status.md", "progress.md", "runs/run-1.md", "artifacts/index.md"],
+      });
+      expect(artifact?.localPath).toContain("_project-meta/token");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
 });
 
 function claimedRun(): WorkerClaimedRunContract {

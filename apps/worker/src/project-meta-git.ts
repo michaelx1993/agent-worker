@@ -31,14 +31,15 @@ export async function writeProjectMetaGitForRun(
   input: WriteProjectMetaGitInput,
 ): Promise<ProjectMetaGitArtifact | undefined> {
   const runtime = resolveClaimedRunRuntime(input.claimed);
-  const planeProjectWorkspaceId = runtime.project?.planeProjectWorkspaceId;
-  if (!planeProjectWorkspaceId) {
+  const projectMemoryId =
+    runtime.project?.planeProjectWorkspaceId ?? runtime.project?.id ?? runtime.project?.slug;
+  if (!projectMemoryId) {
     return undefined;
   }
 
   const localPath = projectMetaRepoPath(
     input.config.workspaceRoot,
-    runtime.project?.slug ?? runtime.project?.id ?? planeProjectWorkspaceId,
+    runtime.project?.slug ?? runtime.project?.id ?? projectMemoryId,
   );
   await ensureGitRepo(localPath);
 
@@ -67,7 +68,7 @@ export async function writeProjectMetaGitForRun(
   const commitSha = await commitProjectMetaRepo(localPath, input.claimed.run.runId);
 
   return {
-    planeProjectWorkspaceId,
+    planeProjectWorkspaceId: projectMemoryId,
     localPath,
     ...(commitSha ? { commitSha } : {}),
     filesChanged,
